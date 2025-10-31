@@ -1,0 +1,14 @@
+2025-11-01 01:48:10.905 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - Starting Log Aggregator System
+2025-11-01 01:48:10.906 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - Configuration:
+2025-11-01 01:48:10.907 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main -   Watch Directory: logs
+2025-11-01 01:48:10.908 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main -   File Pattern: *.log
+2025-11-01 01:48:10.908 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main -   Buffer Size: 1000
+2025-11-01 01:48:10.908 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main -   Batch Size: 100
+2025-11-01 01:48:10.910 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - Initializing system components...
+2025-11-01 01:48:10.911 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - ✓ Core data models initialized
+2025-11-01 01:48:10.912 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - ✓ Configuration system ready
+2025-11-01 01:48:10.913 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - ✓ Logging framework configured
+2025-11-01 01:48:10.913 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - ✓ Project structure validated
+2025-11-01 01:48:10.913 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - Ready for Phase 2: Log Collection Implementation
+2025-11-01 01:48:10.913 [com.logaggregator.Main.main()] INFO  com.logaggregator.Main - Log Aggregator is running. Press Ctrl+C to stop.
+2025-11-01 01:49:16.175 [Thread-2] INFO  com.logaggregator.Main - Shutdown signal received

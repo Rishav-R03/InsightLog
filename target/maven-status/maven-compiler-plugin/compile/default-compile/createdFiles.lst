@@ -1,0 +1,5 @@
+com\logaggregator\parser\LogParser.class
+com\logaggregator\core\LogLevel.class
+com\logaggregator\Main.class
+com\logaggregator\core\Config.class
+com\logaggregator\core\LogEntry.class
