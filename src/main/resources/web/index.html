@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Aggregator Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f23; color: #cccccc;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #333344;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+        }
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333344;
+        }
+        .log-entry {
+            background: #16213e;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #0ea5e9;
+        }
+        .log-entry.error { border-left-color: #ef4444; }
+        .log-entry.warn { border-left-color: #f59e0b; }
+        .log-entry.info { border-left-color: #0ea5e9; }
+        .log-entry.debug { border-left-color: #10b981; }
+
+        .alert-banner {
+            background: #7f1d1d;
+            color: #fecaca;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border: 1px solid #ef4444;
+        }
+
+        .search-box {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #333344;
+            border-radius: 5px;
+            background: #0f0f23;
+            color: #cccccc;
+        }
+
+        button {
+            background: #0ea5e9;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0284c7;
+        }
+
+        .connection-status {
+            float: right;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .connected { background: #10b981; color: white; }
+        .disconnected { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📊 Log Aggregator Dashboard</h1>
+        <div class="connection-status disconnected" id="connectionStatus">Disconnected</div>
+        <p>Real-time log monitoring and analysis</p>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <h3>Total Logs</h3>
+            <div id="totalLogs">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Buffer Size</h3>
+            <div id="bufferSize">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Processed</h3>
+            <div id="processedCount">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>System Status</h3>
+            <div id="systemStatus">Running</div>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search logs..." style="width: 300px;">
+        <button onclick="performSearch()">Search</button>
+        <button onclick="clearLogs()">Clear</button>
+        <button onclick="loadStats()">Refresh Stats</button>
+    </div>
+
+    <div class="panels">
+        <div class="panel">
+            <h2>📝 Recent Logs</h2>
+            <div id="recentLogs">
+                <p>Logs will appear here as they are processed...</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>📊 Statistics</h2>
+            <div id="statsPanel">
+                <p>Statistics will appear here...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let alertCount = 0;
+
+    function loadStats() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(updateStats)
+            .catch(error => {
+                console.error('Error loading stats:', error);
+                document.getElementById('statsPanel').innerHTML = '<p>Error loading statistics</p>';
+            });
+    }
+
+    function performSearch() {
+        const query = document.getElementById('searchInput').value;
+        if (query.trim()) {
+            fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`)
+                .then(response => response.json())
+                .then(data => {
+                    const logsPanel = document.getElementById('recentLogs');
+                    logsPanel.innerHTML = '<h3>Search Results:</h3>';
+
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(log => {
+                            addLogEntry(log);
+                        });
+                    } else {
+                        logsPanel.innerHTML += '<p>No results found</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    alert('Search failed: ' + error.message);
+                });
+        }
+    }
+
+    function loadRecentLogs() {
+        fetch('/api/recent?limit=10')
+            .then(response => response.json())
+            .then(data => {
+                const logsPanel = document.getElementById('recentLogs');
+                logsPanel.innerHTML = '<h3>Recent Logs:</h3>';
+
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(log => {
+                        addLogEntry(log);
+                    });
+                } else {
+                    logsPanel.innerHTML += '<p>No logs yet. Generate some logs to see them here!</p>';
+                }
+            })
+            .catch(console.error);
+    }
+
+    function addLogEntry(log) {
+        const logsPanel = document.getElementById('recentLogs');
+        const logElement = document.createElement('div');
+        logElement.className = `log-entry ${log.level.toLowerCase()}`;
+
+        const time = new Date(log.timestamp).toLocaleTimeString();
+        logElement.innerHTML = `
+            <strong>[${time}]</strong>
+            <span style="color: #f59e0b">${log.source}</span>
+            <span style="color: #0ea5e9">${log.level}</span>
+            <div>${log.message}</div>
+            ${Object.keys(log.fields).length > 0 ?
+              `<small style="color: #888">Fields: ${JSON.stringify(log.fields)}</small>` : ''}
+        `;
+
+        // Add to the top
+        if (logsPanel.children.length > 1) { // Skip the h3
+            logsPanel.insertBefore(logElement, logsPanel.children[1]);
+        } else {
+            logsPanel.appendChild(logElement);
+        }
+
+        // Keep only last 20 entries (plus the h3)
+        while (logsPanel.children.length > 21) {
+            logsPanel.removeChild(logsPanel.lastChild);
+        }
+    }
+
+    function updateStats(stats) {
+        // Update main stats
+        document.getElementById('totalLogs').textContent = stats.totalEntries || 0;
+        document.getElementById('bufferSize').textContent = stats.bufferSize || 0;
+        document.getElementById('processedCount').textContent = stats.processedCount || 0;
+
+        // Update detailed stats panel
+        const statsPanel = document.getElementById('statsPanel');
+        let statsHtml = '<div class="stats-details">';
+
+        if (stats.levelDistribution) {
+            statsHtml += '<h4>Log Levels:</h4>';
+            for (const [level, count] of Object.entries(stats.levelDistribution)) {
+                statsHtml += `<div>${level}: ${count}</div>`;
+            }
+        }
+
+        if (stats.alertStats) {
+            statsHtml += '<h4>Alerts:</h4>';
+            statsHtml += `<div>Total Rules: ${stats.alertStats.totalRules || 0}</div>`;
+            statsHtml += `<div>Total Triggers: ${stats.alertStats.totalTriggers || 0}</div>`;
+        }
+
+        statsHtml += `<div><small>Last updated: ${new Date().toLocaleTimeString()}</small></div>`;
+        statsHtml += '</div>';
+
+        statsPanel.innerHTML = statsHtml;
+    }
+
+    function clearLogs() {
+        document.getElementById('recentLogs').innerHTML = '<h3>Recent Logs:</h3><p>Logs cleared</p>';
+    }
+
+    // Auto-refresh stats every 5 seconds
+    setInterval(loadStats, 5000);
+
+    // Load initial data
+    loadStats();
+    loadRecentLogs();
+
+    // Show connection status
+    document.getElementById('connectionStatus').textContent = 'Connected (HTTP)';
+    document.getElementById('connectionStatus').className = 'connection-status connected';
+
+    console.log('Dashboard loaded successfully');
+</script>
+</body>
+</html>

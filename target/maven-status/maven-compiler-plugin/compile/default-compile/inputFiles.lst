@@ -1,3 +1,8 @@
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\alert\AlertEvent.java
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\alert\AlertListener.java
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\alert\AlertManager.java
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\alert\AlertRule.java
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\alert\AlertSeverity.java
 C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\collector\LogFileWatcher.java
 C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\core\Config.java
 C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\core\LogBuffer.java
@@ -14,3 +19,6 @@ C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\storage\InMemo
 C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\storage\LogStorage.java
 C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\tools\LogGenerator.java
 C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\tools\SearchTester.java
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\web\LogApiServlet.java
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\web\LogWebSocket.java
+C:\Users\91931\Desktop\InsightLog\src\main\java\com\logaggregator\web\WebServer.java

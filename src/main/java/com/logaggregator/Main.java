@@ -1,16 +1,19 @@
 package com.logaggregator;
 
+import com.logaggregator.alert.AlertManager;
 import com.logaggregator.collector.LogFileWatcher;
 import com.logaggregator.core.Config;
 import com.logaggregator.core.LogBuffer;
-import com.logaggregator.core.LogLevel;
 import com.logaggregator.parser.ParserRegistry;
 import com.logaggregator.processor.LogProcessor;
 import com.logaggregator.storage.InMemoryStorage;
 import com.logaggregator.storage.LogStorage;
+import com.logaggregator.web.WebServer;
+import com.logaggregator.web.LogWebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -25,6 +28,8 @@ public class Main {
     private static ParserRegistry parserRegistry;
     private static LogStorage logStorage;
     private static LogProcessor logProcessor;
+    private static AlertManager alertManager;
+    private static WebServer webServer;
     private static ScheduledExecutorService scheduler;
 
     public static void main(String[] args) {
@@ -71,6 +76,7 @@ public class Main {
         logger.info("  Batch Size: {}", Config.get("log.batch.size"));
         logger.info("  Processor Threads: {}", Config.get("log.processor.threads"));
         logger.info("  Storage Capacity: {}", Config.get("log.storage.max_entries"));
+        logger.info("  Web Server Port: {}", Config.get("web.server.port"));
     }
 
     private static void initializeSystem() {
@@ -100,13 +106,22 @@ public class Main {
                 Config.getInt("log.processor.threads")
         );
 
-        scheduler = Executors.newScheduledThreadPool(3);
+        // Phase 4: Alerting and Web Dashboard
+        alertManager = new AlertManager();
+        webServer = new WebServer();
+
+        // Setup alert listeners
+        alertManager.addListener(new LogWebSocket());
+
+        scheduler = Executors.newScheduledThreadPool(4);
 
         logger.info("✓ Log buffer initialized (capacity: {})", Config.getInt("log.buffer.size"));
         logger.info("✓ Parser registry initialized ({} parsers)", parserRegistry.getParsers().size());
         logger.info("✓ File watcher initialized");
         logger.info("✓ In-memory storage initialized (capacity: {})", Config.getInt("log.storage.max_entries"));
         logger.info("✓ Log processor initialized ({} threads)", Config.getInt("log.processor.threads"));
+        logger.info("✓ Alert manager initialized");
+        logger.info("✓ Web server initialized (port: {})", Config.getInt("web.server.port"));
         logger.info("✓ Scheduler initialized");
     }
 
@@ -115,6 +130,7 @@ public class Main {
 
         fileWatcher.start();
         logProcessor.start();
+        webServer.start();
 
         // Start buffer processor monitoring
         scheduler.scheduleAtFixedRate(() -> {
@@ -122,16 +138,28 @@ public class Main {
             long processedCount = logProcessor.getProcessedCount();
             long storageCount = logStorage.getTotalCount();
 
+            // Send stats to WebSocket clients
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalEntries", storageCount);
+            stats.put("bufferSize", bufferSize);
+            stats.put("processedCount", processedCount);
+            stats.put("connectedClients", LogWebSocket.getConnectedClients());
+            stats.put("alertStats", alertManager.getStats());
+
+            LogWebSocket.broadcastStats(stats);
+
             if (bufferSize > 0 || processedCount % 100 == 0) {
                 logger.info("Processing stats - Buffer: {}, Processed: {}, Storage: {}",
                         bufferSize, processedCount, storageCount);
             }
-        }, 10, 10, TimeUnit.SECONDS);
+        }, 5, 5, TimeUnit.SECONDS);
 
         logger.info("✓ File watcher started");
         logger.info("✓ Log processor started");
+        logger.info("✓ Web server started");
         logger.info("✓ Monitoring tasks scheduled");
-        logger.info("Phase 3: Processing & Storage is ACTIVE - Ready to process and store logs!");
+        logger.info("Phase 4: Analytics & Alerts is ACTIVE - Dashboard available at http://localhost:{}",
+                Config.getInt("web.server.port"));
     }
 
     private static void startMonitoring() {
@@ -146,7 +174,7 @@ public class Main {
 
             // Show storage statistics
             if (storageCount > 0) {
-                Map<LogLevel, Long> stats =
+                Map<com.logaggregator.core.LogLevel, Long> stats =
                         ((InMemoryStorage) logStorage).getLevelStatistics();
                 stats.forEach((level, count) -> {
                     if (count > 0) {
@@ -154,6 +182,11 @@ public class Main {
                     }
                 });
             }
+
+            // Show alert statistics
+            Map<String, Object> alertStats = alertManager.getStats();
+            logger.info("Alert stats - Rules: {}, Total triggers: {}",
+                    alertStats.get("totalRules"), alertStats.get("totalTriggers"));
 
         }, 30, 30, TimeUnit.SECONDS);
     }
@@ -168,6 +201,18 @@ public class Main {
 
         if (fileWatcher != null) {
             fileWatcher.stop();
+        }
+
+        if (alertManager != null) {
+            alertManager.stop();
+        }
+
+        try {
+            if (webServer != null) {
+                webServer.stop();
+            }
+        } catch (Exception e) {
+            logger.error("Error stopping web server", e);
         }
 
         if (logStorage != null) {
