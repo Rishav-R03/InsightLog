@@ -1,0 +1,11 @@
+com\logaggregator\parser\LogParser.class
+com\logaggregator\parser\TextLogParser.class
+com\logaggregator\core\LogLevel.class
+com\logaggregator\core\LogBuffer.class
+com\logaggregator\tools\LogGenerator.class
+com\logaggregator\parser\JsonLogParser.class
+com\logaggregator\core\LogEntry.class
+com\logaggregator\collector\LogFileWatcher.class
+com\logaggregator\parser\ParserRegistry.class
+com\logaggregator\Main.class
+com\logaggregator\core\Config.class

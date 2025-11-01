@@ -1,0 +1,3 @@
+{"timestamp": "2024-01-15T10:30:00", "level": "INFO", "message": "Application started", "source": "sample-app", "userId": "12345"}
+{"timestamp": "2024-01-15T10:30:01", "level": "DEBUG", "message": "Loading configuration", "source": "sample-app", "configFile": "app.properties"}
+{"timestamp": "2024-01-15T10:30:05", "level": "ERROR", "message": "Failed to connect to database", "source": "sample-app", "error": "Connection timeout"}
