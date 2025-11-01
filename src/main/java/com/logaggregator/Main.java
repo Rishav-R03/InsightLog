@@ -3,10 +3,15 @@ package com.logaggregator;
 import com.logaggregator.collector.LogFileWatcher;
 import com.logaggregator.core.Config;
 import com.logaggregator.core.LogBuffer;
+import com.logaggregator.core.LogLevel;
 import com.logaggregator.parser.ParserRegistry;
+import com.logaggregator.processor.LogProcessor;
+import com.logaggregator.storage.InMemoryStorage;
+import com.logaggregator.storage.LogStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +23,8 @@ public class Main {
     private static LogFileWatcher fileWatcher;
     private static LogBuffer logBuffer;
     private static ParserRegistry parserRegistry;
+    private static LogStorage logStorage;
+    private static LogProcessor logProcessor;
     private static ScheduledExecutorService scheduler;
 
     public static void main(String[] args) {
@@ -62,7 +69,8 @@ public class Main {
         logger.info("  File Pattern: {}", Config.get("log.file.pattern"));
         logger.info("  Buffer Size: {}", Config.get("log.buffer.size"));
         logger.info("  Batch Size: {}", Config.get("log.batch.size"));
-        logger.info("  Batch Timeout: {}ms", Config.get("log.batch.timeout.ms"));
+        logger.info("  Processor Threads: {}", Config.get("log.processor.threads"));
+        logger.info("  Storage Capacity: {}", Config.get("log.storage.max_entries"));
     }
 
     private static void initializeSystem() {
@@ -84,11 +92,21 @@ public class Main {
                 parserRegistry
         );
 
-        scheduler = Executors.newScheduledThreadPool(2);
+        // Phase 3: Storage and Processing
+        logStorage = new InMemoryStorage(Config.getInt("log.storage.max_entries"));
+        logProcessor = new LogProcessor(
+                logBuffer,
+                logStorage,
+                Config.getInt("log.processor.threads")
+        );
+
+        scheduler = Executors.newScheduledThreadPool(3);
 
         logger.info("✓ Log buffer initialized (capacity: {})", Config.getInt("log.buffer.size"));
         logger.info("✓ Parser registry initialized ({} parsers)", parserRegistry.getParsers().size());
         logger.info("✓ File watcher initialized");
+        logger.info("✓ In-memory storage initialized (capacity: {})", Config.getInt("log.storage.max_entries"));
+        logger.info("✓ Log processor initialized ({} threads)", Config.getInt("log.processor.threads"));
         logger.info("✓ Scheduler initialized");
     }
 
@@ -96,25 +114,47 @@ public class Main {
         logger.info("Starting system components...");
 
         fileWatcher.start();
+        logProcessor.start();
 
-        // Start buffer processor (for Phase 3 - will process batches)
+        // Start buffer processor monitoring
         scheduler.scheduleAtFixedRate(() -> {
             int bufferSize = logBuffer.size();
-            if (bufferSize > 0) {
-                logger.debug("Buffer status: {} entries waiting", bufferSize);
+            long processedCount = logProcessor.getProcessedCount();
+            long storageCount = logStorage.getTotalCount();
+
+            if (bufferSize > 0 || processedCount % 100 == 0) {
+                logger.info("Processing stats - Buffer: {}, Processed: {}, Storage: {}",
+                        bufferSize, processedCount, storageCount);
             }
-        }, 5, 5, TimeUnit.SECONDS);
+        }, 10, 10, TimeUnit.SECONDS);
 
         logger.info("✓ File watcher started");
+        logger.info("✓ Log processor started");
         logger.info("✓ Monitoring tasks scheduled");
-        logger.info("Phase 2: Log Collection is ACTIVE - Watching for log files...");
+        logger.info("Phase 3: Processing & Storage is ACTIVE - Ready to process and store logs!");
     }
 
     private static void startMonitoring() {
         // Log system status periodically
         scheduler.scheduleAtFixedRate(() -> {
-            logger.info("System status - Buffer: {} entries, Active parsers: {}",
-                    logBuffer.size(), parserRegistry.getParsers().size());
+            long processedCount = logProcessor.getProcessedCount();
+            long storageCount = logStorage.getTotalCount();
+            int bufferSize = logBuffer.size();
+
+            logger.info("System Status - Buffer: {}, Processed: {}, Storage: {}",
+                    bufferSize, processedCount, storageCount);
+
+            // Show storage statistics
+            if (storageCount > 0) {
+                Map<LogLevel, Long> stats =
+                        ((InMemoryStorage) logStorage).getLevelStatistics();
+                stats.forEach((level, count) -> {
+                    if (count > 0) {
+                        logger.info("  {}: {}", level, count);
+                    }
+                });
+            }
+
         }, 30, 30, TimeUnit.SECONDS);
     }
 
@@ -122,8 +162,16 @@ public class Main {
         logger.info("Shutting down Log Aggregator...");
         running = false;
 
+        if (logProcessor != null) {
+            logProcessor.stop();
+        }
+
         if (fileWatcher != null) {
             fileWatcher.stop();
+        }
+
+        if (logStorage != null) {
+            logStorage.close();
         }
 
         if (scheduler != null) {
@@ -138,5 +186,10 @@ public class Main {
         }
 
         logger.info("Log Aggregator shutdown completed");
+    }
+
+    // Utility method to access storage for testing
+    public static LogStorage getLogStorage() {
+        return logStorage;
     }
 }
