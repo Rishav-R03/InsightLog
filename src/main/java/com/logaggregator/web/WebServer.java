@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.net.URL;
 
 public class WebServer {
     private static final Logger logger = LoggerFactory.getLogger(WebServer.class);
@@ -29,48 +28,41 @@ public class WebServer {
         context.setContextPath("/");
         server.setHandler(context);
 
-        // Add REST API servlet
-        ServletHolder apiServlet = new ServletHolder("api", new LogApiServlet());
-        context.addServlet(apiServlet, "/api/*");
+        // ONLY use DashboardServlet for root path - remove DefaultServlet
+        ServletHolder dashboardHolder = new ServletHolder("dashboard", new DashboardServlet());
+        context.addServlet(dashboardHolder, "/");
 
-        // Serve static files from classpath
-        context.setResourceBase(getResourceBase());
-        context.addServlet(new ServletHolder("default", new org.eclipse.jetty.servlet.DefaultServlet()), "/");
+        // API servlet for /api/* paths
+        ServletHolder apiHolder = new ServletHolder("api", new LogApiServlet());
+        context.addServlet(apiHolder, "/api/*");
 
         // Configure WebSocket
         JettyWebSocketServletContainerInitializer.configure(context, (servletContext, wsContainer) -> {
             wsContainer.addMapping("/ws", LogWebSocket.class);
         });
 
-        logger.debug("Web server context setup complete");
-    }
-
-    private String getResourceBase() {
-        // Try to find the web resources in classpath
-        URL webResource = getClass().getClassLoader().getResource("web");
-        if (webResource != null) {
-            return webResource.toExternalForm();
-        }
-
-        // Fallback to current directory
-        logger.warn("Web resources not found in classpath, using current directory");
-        return ".";
+        logger.debug("Web server context setup complete - using DashboardServlet only");
     }
 
     public void start() throws Exception {
         server.start();
-        logger.info("Web server started on http://localhost:{}", port);
-        logger.info("Dashboard available at http://localhost:{}", port);
-        logger.info("WebSocket available on ws://localhost:{}/ws", port);
-        logger.info("REST API available on http://localhost:{}/api/*", port);
+        logger.info("✅ Web server started on http://localhost:{}", port);
+        logger.info("✅ Dashboard available at http://localhost:{}", port);
+        logger.info("✅ REST API available at http://localhost:{}/api/*", port);
     }
 
-    public void stop() throws Exception {
-        server.stop();
-        logger.info("Web server stopped");
+    public void stop() {
+        if (server != null && server.isRunning()) {
+            try {
+                server.stop();
+                logger.info("Web server stopped gracefully");
+            } catch (Exception e) {
+                logger.error("Error stopping web server", e);
+            }
+        }
     }
 
     public boolean isRunning() {
-        return server.isRunning();
+        return server != null && server.isRunning();
     }
 }

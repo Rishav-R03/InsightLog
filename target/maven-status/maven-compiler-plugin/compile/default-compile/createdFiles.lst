@@ -4,6 +4,7 @@ com\logaggregator\core\LogLevel.class
 com\logaggregator\alert\AlertListener.class
 com\logaggregator\core\LogBuffer.class
 com\logaggregator\storage\InMemoryStorage.class
+com\logaggregator\web\DashboardServlet.class
 com\logaggregator\parser\JsonLogParser.class
 com\logaggregator\alert\AlertManager.class
 com\logaggregator\web\WebServer.class
